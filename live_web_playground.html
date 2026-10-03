@@ -1,0 +1,817 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Live HTML / CSS / JavaScript Playground</title>
+<style>
+  :root{
+    --bg:#0b0f14;
+    --panel:#111720;
+    --panel-2:#0d131b;
+    --border:#273241;
+    --text:#e9eef5;
+    --muted:#8b98a9;
+    --accent:#68d5ff;
+    --accent-2:#8e7dff;
+    --danger:#ff6b7a;
+    --success:#62e6a7;
+    --shadow:0 20px 60px rgba(0,0,0,.35);
+    --radius:14px;
+    --editor-font: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+    --ui-font: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  }
+
+  *{box-sizing:border-box}
+  html,body{height:100%;margin:0}
+  body{
+    overflow:hidden;
+    background:var(--bg);
+    color:var(--text);
+    font-family:var(--ui-font);
+  }
+
+  button, textarea, input{font:inherit}
+
+  .app{
+    height:100vh;
+    display:grid;
+    grid-template-columns:1fr 1fr;
+    background:
+      radial-gradient(circle at 12% 8%, rgba(104,213,255,.07), transparent 30%),
+      radial-gradient(circle at 88% 90%, rgba(142,125,255,.06), transparent 30%),
+      var(--bg);
+  }
+
+  .panel{
+    min-width:0;
+    min-height:0;
+    display:flex;
+    flex-direction:column;
+    background:rgba(17,23,32,.88);
+  }
+
+  .left{
+    border-right:1px solid var(--border);
+  }
+
+  .topbar{
+    height:62px;
+    flex:0 0 62px;
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    gap:14px;
+    padding:0 15px;
+    border-bottom:1px solid var(--border);
+    background:rgba(11,15,20,.82);
+    backdrop-filter:blur(10px);
+  }
+
+  .brand{
+    display:flex;
+    align-items:center;
+    gap:10px;
+    min-width:0;
+  }
+
+  .logo{
+    width:30px;
+    height:30px;
+    display:grid;
+    place-items:center;
+    border:1px solid rgba(104,213,255,.35);
+    border-radius:9px;
+    color:var(--accent);
+    box-shadow:0 0 20px rgba(104,213,255,.1) inset;
+    font-size:15px;
+    font-weight:800;
+  }
+
+  .title{
+    font-size:14px;
+    font-weight:750;
+    white-space:nowrap;
+    overflow:hidden;
+    text-overflow:ellipsis;
+  }
+
+  .subtitle{
+    color:var(--muted);
+    font-size:11px;
+    margin-top:2px;
+  }
+
+  .toolbar{
+    display:flex;
+    align-items:center;
+    gap:7px;
+  }
+
+  .toolbar button{
+    border:1px solid var(--border);
+    background:#141c26;
+    color:#dfe7f1;
+    min-width:34px;
+    height:34px;
+    border-radius:9px;
+    cursor:pointer;
+    transition:.15s ease;
+  }
+
+  .toolbar button:hover{
+    border-color:#3a4b60;
+    background:#192331;
+    transform:translateY(-1px);
+  }
+
+  .toolbar button:active{transform:translateY(0)}
+
+  .status{
+    display:flex;
+    align-items:center;
+    gap:7px;
+    color:var(--muted);
+    font-size:11px;
+    white-space:nowrap;
+  }
+
+  .dot{
+    width:8px;height:8px;border-radius:50%;
+    background:var(--success);
+    box-shadow:0 0 10px rgba(98,230,167,.65);
+  }
+
+  .dot.error{
+    background:var(--danger);
+    box-shadow:0 0 10px rgba(255,107,122,.65);
+  }
+
+  .tabs{
+    height:47px;
+    flex:0 0 47px;
+    display:flex;
+    gap:4px;
+    align-items:end;
+    padding:0 10px;
+    border-bottom:1px solid var(--border);
+    background:var(--panel);
+  }
+
+  .tab{
+    height:40px;
+    padding:0 14px;
+    border:0;
+    border-bottom:2px solid transparent;
+    background:transparent;
+    color:var(--muted);
+    cursor:pointer;
+    font-size:12px;
+    font-weight:700;
+  }
+
+  .tab:hover{color:#dce7f5}
+  .tab.active{
+    color:#f1f6fb;
+    border-bottom-color:var(--accent);
+  }
+
+  .tab[data-lang="css"].active{border-bottom-color:#69e0a7}
+  .tab[data-lang="js"].active{border-bottom-color:#f6d65d}
+
+  .editor-wrap{
+    position:relative;
+    flex:1;
+    min-height:0;
+    overflow:hidden;
+    background:var(--panel-2);
+  }
+
+  .editor-shell{
+    position:absolute;
+    inset:0;
+    display:none;
+  }
+
+  .editor-shell.active{display:flex}
+
+  .line-numbers{
+    width:54px;
+    flex:0 0 54px;
+    overflow:hidden;
+    padding:16px 10px 24px 0;
+    text-align:right;
+    color:#495667;
+    font:13px/1.55 var(--editor-font);
+    user-select:none;
+    border-right:1px solid rgba(39,50,65,.65);
+    background:#0b1118;
+  }
+
+  .line-numbers span{
+    display:block;
+    height:20.15px;
+  }
+
+  .editor{
+    flex:1;
+    min-width:0;
+    height:100%;
+    resize:none;
+    overflow:auto;
+    padding:16px 18px 32px 15px;
+    border:0;
+    outline:0;
+    background:transparent;
+    color:#e9eef5;
+    font:13px/1.55 var(--editor-font);
+    tab-size:2;
+    white-space:pre;
+    caret-color:#fff;
+  }
+
+  .editor::selection{background:rgba(104,213,255,.2)}
+
+  .bottom{
+    min-height:48px;
+    flex:0 0 48px;
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    gap:10px;
+    padding:8px 12px;
+    border-top:1px solid var(--border);
+    background:#0d131b;
+  }
+
+  .hint{
+    color:var(--muted);
+    font-size:10px;
+    white-space:nowrap;
+    overflow:hidden;
+    text-overflow:ellipsis;
+  }
+
+  .kbd{
+    padding:2px 5px;
+    border:1px solid #344253;
+    border-bottom-width:2px;
+    border-radius:4px;
+    color:#cbd6e3;
+    background:#141b24;
+    font-family:var(--editor-font);
+    font-size:9px;
+  }
+
+  .preview{
+    min-width:0;
+  }
+
+  .previewbar{
+    gap:12px;
+  }
+
+  .preview-title{
+    display:flex;
+    align-items:center;
+    gap:8px;
+    font-weight:750;
+    font-size:13px;
+  }
+
+  .preview-actions{
+    display:flex;
+    align-items:center;
+    gap:7px;
+  }
+
+  .small-btn{
+    border:1px solid var(--border);
+    background:#141c26;
+    color:#dfe7f1;
+    border-radius:8px;
+    height:30px;
+    padding:0 10px;
+    cursor:pointer;
+    font-size:11px;
+  }
+
+  .small-btn:hover{
+    border-color:#3a4b60;
+    background:#192331;
+  }
+
+  .preview-frame-wrap{
+    position:relative;
+    flex:1;
+    min-height:0;
+    background:#fff;
+  }
+
+  iframe{
+    width:100%;
+    height:100%;
+    display:block;
+    border:0;
+    background:white;
+  }
+
+  .console{
+    height:145px;
+    flex:0 0 145px;
+    display:flex;
+    flex-direction:column;
+    border-top:1px solid var(--border);
+    background:#080c11;
+  }
+
+  .console-head{
+    height:33px;
+    flex:0 0 33px;
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    padding:0 11px;
+    border-bottom:1px solid #202a37;
+    color:#aeb9c7;
+    font-size:10px;
+    font-weight:750;
+    text-transform:uppercase;
+    letter-spacing:.08em;
+  }
+
+  .console-head button{
+    border:0;
+    background:transparent;
+    color:#718093;
+    cursor:pointer;
+    font-size:10px;
+  }
+  .console-head button:hover{color:#dce7f5}
+
+  .console-log{
+    flex:1;
+    min-height:0;
+    overflow:auto;
+    padding:6px 10px 10px;
+    font:11px/1.5 var(--editor-font);
+  }
+
+  .log{
+    padding:2px 0;
+    white-space:pre-wrap;
+    word-break:break-word;
+  }
+
+  .log.info{color:#9fb0c4}
+  .log.log{color:#c9d2dd}
+  .log.warn{color:#f6d65d}
+  .log.error{color:#ff8793}
+  .log.system{color:#70d8ff}
+
+  .empty-console{
+    color:#566477;
+    padding:5px 0;
+  }
+
+  @media (max-width: 900px){
+    body{overflow:auto}
+    .app{
+      height:auto;
+      min-height:100vh;
+      grid-template-columns:1fr;
+    }
+    .left{border-right:0;border-bottom:1px solid var(--border)}
+    .panel{height:60vh;min-height:420px}
+    .preview{height:60vh;min-height:420px}
+    .console{height:130px;flex-basis:130px}
+  }
+
+  @media (max-width: 560px){
+    .title{font-size:12px}
+    .subtitle{display:none}
+    .tab{padding:0 10px}
+    .line-numbers{width:44px;flex-basis:44px}
+    .editor{padding-left:11px;padding-right:12px}
+    .hint{display:none}
+  }
+</style>
+</head>
+<body>
+<div class="app">
+  <section class="panel left">
+    <div class="topbar">
+      <div class="brand">
+        <div class="logo">&lt;/&gt;</div>
+        <div>
+          <div class="title">Live Web Playground</div>
+          <div class="subtitle">HTML • CSS • JavaScript</div>
+        </div>
+      </div>
+      <div class="toolbar">
+        <div class="status"><span id="statusDot" class="dot"></span><span id="statusText">Live</span></div>
+        <button id="resetBtn" title="Reset starter code">↺</button>
+        <button id="formatBtn" title="Basic formatting">✦</button>
+      </div>
+    </div>
+
+    <div class="tabs">
+      <button class="tab active" data-lang="html">HTML</button>
+      <button class="tab" data-lang="css">CSS</button>
+      <button class="tab" data-lang="js">JavaScript</button>
+    </div>
+
+    <div class="editor-wrap">
+      <div class="editor-shell active" data-lang="html">
+        <div class="line-numbers" id="lines-html"></div>
+        <textarea class="editor" id="editor-html" spellcheck="false" wrap="off" aria-label="HTML editor"></textarea>
+      </div>
+
+      <div class="editor-shell" data-lang="css">
+        <div class="line-numbers" id="lines-css"></div>
+        <textarea class="editor" id="editor-css" spellcheck="false" wrap="off" aria-label="CSS editor"></textarea>
+      </div>
+
+      <div class="editor-shell" data-lang="js">
+        <div class="line-numbers" id="lines-js"></div>
+        <textarea class="editor" id="editor-js" spellcheck="false" wrap="off" aria-label="JavaScript editor"></textarea>
+      </div>
+    </div>
+
+    <div class="bottom">
+      <div class="hint">
+        Tab: indent · Ctrl/Cmd+Enter: run · Editor state is saved locally
+      </div>
+      <div>
+        <span class="kbd">Ctrl</span> + <span class="kbd">Enter</span>
+      </div>
+    </div>
+  </section>
+
+  <section class="panel preview">
+    <div class="topbar previewbar">
+      <div class="preview-title">◉ Live Preview</div>
+      <div class="preview-actions">
+        <button class="small-btn" id="newTabBtn">Open ↗</button>
+        <button class="small-btn" id="refreshBtn">Refresh</button>
+        <button class="small-btn" id="clearConsoleBtn">Clear</button>
+      </div>
+    </div>
+
+    <div class="preview-frame-wrap">
+      <iframe id="preview" title="Live preview" sandbox="allow-scripts allow-forms allow-modals"></iframe>
+    </div>
+
+    <div class="console">
+      <div class="console-head">
+        <span>Console</span>
+        <button id="copyConsoleBtn">Copy</button>
+      </div>
+      <div class="console-log" id="consoleLog">
+        <div class="empty-console" id="consoleEmpty">Console output will appear here…</div>
+      </div>
+    </div>
+  </section>
+</div>
+
+<script>
+(() => {
+  "use strict";
+
+  const starter = {
+    html: `<main class="card">
+  <p class="eyebrow">LIVE PLAYGROUND</p>
+  <h1>Hello, web.</h1>
+  <p>Edit the HTML, CSS, and JavaScript tabs to see the result instantly.</p>
+  <button id="demoButton">Click me</button>
+  <div id="message" class="message">Waiting for interaction…</div>
+</main>`,
+    css: `* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  display: grid;
+  place-items: center;
+  padding: 2rem;
+  font-family: system-ui, sans-serif;
+  background: linear-gradient(135deg, #0f172a, #1e293b);
+  color: #f8fafc;
+}
+
+.card {
+  width: min(560px, 100%);
+  padding: 2.2rem;
+  border: 1px solid rgba(255,255,255,.14);
+  border-radius: 24px;
+  background: rgba(255,255,255,.08);
+  backdrop-filter: blur(12px);
+  box-shadow: 0 25px 80px rgba(0,0,0,.35);
+}
+
+.eyebrow {
+  margin: 0 0 .65rem;
+  font-size: .75rem;
+  letter-spacing: .18em;
+  color: #67e8f9;
+  font-weight: 800;
+}
+
+h1 { margin: 0 0 .65rem; font-size: clamp(2rem, 6vw, 3.6rem); }
+p { color: #cbd5e1; line-height: 1.6; }
+
+button {
+  border: 0;
+  border-radius: 12px;
+  padding: .8rem 1.05rem;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.message {
+  margin-top: 1rem;
+  padding: .8rem 1rem;
+  border-radius: 12px;
+  background: rgba(0,0,0,.2);
+  color: #cbd5e1;
+}`,
+    js: `const button = document.querySelector("#demoButton");
+const message = document.querySelector("#message");
+
+button?.addEventListener("click", () => {
+  message.textContent = "JavaScript is running ✓";
+  console.log("Button clicked!");
+});`
+  };
+
+  const keys = {
+    html: "live-playground-html",
+    css: "live-playground-css",
+    js: "live-playground-js"
+  };
+
+  const editors = {
+    html: document.getElementById("editor-html"),
+    css: document.getElementById("editor-css"),
+    js: document.getElementById("editor-js")
+  };
+
+  const lineBoxes = {
+    html: document.getElementById("lines-html"),
+    css: document.getElementById("lines-css"),
+    js: document.getElementById("lines-js")
+  };
+
+  const preview = document.getElementById("preview");
+  const consoleLog = document.getElementById("consoleLog");
+  const consoleEmpty = document.getElementById("consoleEmpty");
+  const statusDot = document.getElementById("statusDot");
+  const statusText = document.getElementById("statusText");
+
+  let updateTimer = null;
+  let hasConsoleOutput = false;
+  let lastDocument = "";
+
+  function loadState() {
+    for (const lang of Object.keys(editors)) {
+      let value = null;
+      try { value = localStorage.getItem(keys[lang]); } catch (_) {}
+      editors[lang].value = value !== null ? value : starter[lang];
+      updateLines(lang);
+    }
+  }
+
+  function saveState(lang) {
+    try { localStorage.setItem(keys[lang], editors[lang].value); } catch (_) {}
+  }
+
+  function updateLines(lang) {
+    const count = Math.max(1, editors[lang].value.split("\n").length);
+    lineBoxes[lang].innerHTML = Array.from({length: count}, (_, i) => `<span>${i + 1}</span>`).join("");
+  }
+
+  function escapeScript(text) {
+    return text.replace(/<\/script/gi, "<\\/script");
+  }
+
+  function buildDocument() {
+    const html = editors.html.value;
+    const css = editors.css.value;
+    const js = escapeScript(editors.js.value);
+
+    // Keep a small bridge script before user JS so console messages can be sent to the parent.
+    const bridge = `
+<script>
+(() => {
+  const safe = value => {
+    try {
+      if (typeof value === "string") return value;
+      if (value instanceof Error) return value.stack || value.message;
+      return JSON.stringify(value, null, 2);
+    } catch (_) { return String(value); }
+  };
+  const send = (type, args) => {
+    try { parent.postMessage({source:"live-playground", type, args:args.map(safe)}, "*"); } catch (_) {}
+  };
+  const original = {
+    log: console.log, info: console.info, warn: console.warn, error: console.error
+  };
+  console.log = (...args) => { send("log", args); original.log.apply(console, args); };
+  console.info = (...args) => { send("info", args); original.info.apply(console, args); };
+  console.warn = (...args) => { send("warn", args); original.warn.apply(console, args); };
+  console.error = (...args) => { send("error", args); original.error.apply(console, args); };
+  window.addEventListener("error", e => send("error", [e.message + " at line " + e.lineno + ":" + e.colno]));
+  window.addEventListener("unhandledrejection", e => send("error", ["Unhandled promise rejection:", e.reason]));
+  parent.postMessage({source:"live-playground", type:"ready", args:[]}, "*");
+})();
+<\/script>`;
+
+    return `<!doctype html>
+<html>
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<style>${css}</style>
+</head>
+<body>
+${html}
+${bridge}
+<script>
+${js}
+<\/script>
+</body>
+</html>`;
+  }
+
+  function addConsole(type, args, fromIframe = true) {
+    if (consoleEmpty) consoleEmpty.remove();
+    hasConsoleOutput = true;
+    const row = document.createElement("div");
+    row.className = "log " + type;
+    const prefix = type === "error" ? "✕ " : type === "warn" ? "⚠ " : type === "system" ? "› " : "";
+    row.textContent = prefix + (Array.isArray(args) ? args.join(" ") : String(args));
+    consoleLog.appendChild(row);
+    consoleLog.scrollTop = consoleLog.scrollHeight;
+  }
+
+  function setStatus(text, error = false) {
+    statusText.textContent = text;
+    statusDot.classList.toggle("error", error);
+  }
+
+  function render(immediate = false) {
+    if (!immediate) {
+      clearTimeout(updateTimer);
+      updateTimer = setTimeout(() => render(true), 50);
+      return;
+    }
+
+    const doc = buildDocument();
+    if (doc === lastDocument) return;
+    lastDocument = doc;
+
+    saveState("html");
+    saveState("css");
+    saveState("js");
+
+    // srcdoc is deliberately recreated for deterministic execution and to avoid stale script state.
+    // User DOM state that is purely visual will generally persist only until code changes.
+    preview.srcdoc = doc;
+    setStatus("Live", false);
+  }
+
+  function reset() {
+    for (const lang of Object.keys(editors)) {
+      editors[lang].value = starter[lang];
+      saveState(lang);
+      updateLines(lang);
+    }
+    clearConsole();
+    lastDocument = "";
+    render(true);
+  }
+
+  function clearConsole() {
+    consoleLog.innerHTML = '<div class="empty-console" id="consoleEmpty">Console output will appear here…</div>';
+    hasConsoleOutput = false;
+    setStatus("Live", false);
+  }
+
+  function basicFormat(lang) {
+    const el = editors[lang];
+    const value = el.value;
+    let formatted = value;
+
+    if (lang === "html") {
+      formatted = value
+        .replace(/>\s*</g, "><")
+        .replace(/></g, ">\n<");
+    } else if (lang === "css") {
+      formatted = value
+        .replace(/\s*\{\s*/g, " {\n  ")
+        .replace(/;\s*/g, ";\n  ")
+        .replace(/\s*\}/g, "\n}\n")
+        .replace(/\n\s*\n/g, "\n");
+    } else if (lang === "js") {
+      formatted = value
+        .replace(/;\s*/g, ";\n")
+        .replace(/\{\s*/g, "{\n  ")
+        .replace(/\n\s*\}/g, "\n}");
+    }
+
+    el.value = formatted.trim();
+    updateLines(lang);
+    saveState(lang);
+    render();
+  }
+
+  function syncScroll(lang) {
+    lineBoxes[lang].scrollTop = editors[lang].scrollTop;
+  }
+
+  for (const lang of Object.keys(editors)) {
+    editors[lang].addEventListener("input", () => {
+      updateLines(lang);
+      saveState(lang);
+      setStatus("Updating…", false);
+      render();
+    });
+
+    editors[lang].addEventListener("scroll", () => syncScroll(lang));
+
+    editors[lang].addEventListener("keydown", e => {
+      if (e.key === "Tab") {
+        e.preventDefault();
+        const start = e.selectionStart;
+        const end = e.selectionEnd;
+        const value = e.value;
+        e.target.value = value.slice(0, start) + "  " + value.slice(end);
+        e.target.selectionStart = e.target.selectionEnd = start + 2;
+        updateLines(lang);
+        saveState(lang);
+        render();
+      }
+
+      if ((e.ctrlKey || e.metaKey) && e.key === "Enter") {
+        e.preventDefault();
+        render(true);
+        addConsole("system", ["Preview refreshed."]);
+      }
+    });
+  }
+
+  document.querySelectorAll(".tab").forEach(tab => {
+    tab.addEventListener("click", () => {
+      const lang = tab.dataset.lang;
+      document.querySelectorAll(".tab").forEach(t => t.classList.toggle("active", t === tab));
+      document.querySelectorAll(".editor-shell").forEach(s => s.classList.toggle("active", s.dataset.lang === lang));
+      editors[lang].focus();
+    });
+  });
+
+  document.getElementById("resetBtn").addEventListener("click", reset);
+  document.getElementById("formatBtn").addEventListener("click", () => {
+    const current = document.querySelector(".tab.active").dataset.lang;
+    basicFormat(current);
+  });
+  document.getElementById("refreshBtn").addEventListener("click", () => render(true));
+  document.getElementById("clearConsoleBtn").addEventListener("click", clearConsole);
+
+  document.getElementById("copyConsoleBtn").addEventListener("click", async () => {
+    const text = [...consoleLog.querySelectorAll(".log")].map(x => x.textContent).join("\n");
+    try {
+      await navigator.clipboard.writeText(text);
+      addConsole("system", ["Console copied to clipboard."]);
+    } catch (_) {
+      addConsole("warn", ["Clipboard access is unavailable in this browser context."]);
+    }
+  });
+
+  document.getElementById("newTabBtn").addEventListener("click", () => {
+    const blob = new Blob([buildDocument()], {type:"text/html"});
+    const url = URL.createObjectURL(blob);
+    window.open(url, "_blank", "noopener,noreferrer");
+    setTimeout(() => URL.revokeObjectURL(url), 10000);
+  });
+
+  window.addEventListener("message", e => {
+    if (!e.data || e.data.source !== "live-playground") return;
+    if (e.data.type === "ready") {
+      setStatus("Live", false);
+      return;
+    }
+    addConsole(e.data.type || "info", e.data.args || []);
+    if (e.data.type === "error") setStatus("Error", true);
+  });
+
+  // Keep line numbers aligned when the editor is resized or font rendering changes.
+  window.addEventListener("resize", () => {
+    Object.keys(editors).forEach(updateLines);
+  });
+
+  loadState();
+  render(true);
+})();
+</script>
+</body>
+</html>
